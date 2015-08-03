@@ -10,6 +10,8 @@ release:
 	mkdir -p bindip
 	cp bindip.exe bindip32.dll bindip64.dll bindip
 	zip -r bindip.zip bindip
+	candle bindip.wxs -out bindip.wixobj
+	light bindip.wixobj -out bindip.msi
 
 CFLAGS=-Wall -fno-stack-check -fno-stack-protector -mno-stack-arg-probe -fno-asynchronous-unwind-tables
 LDFLAGS=-Wl,--enable-stdcall-fixup -lws2_32 -lADVAPI32 -lkernel32 -lUSER32 -lComdlg32 -lIPHLPAPI -lshlwapi -lSHELL32 -lWSHTCPIP -Wl,--allow-multiple-definition -lmsvcrt
