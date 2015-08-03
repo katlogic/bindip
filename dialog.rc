@@ -21,6 +21,7 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 #pragma code_page(1252)
 #endif //_WIN32
 
+5000 ICON "bindip.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //
