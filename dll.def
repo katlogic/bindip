@@ -1,0 +1,20 @@
+IMPORTS
+wsbind = WS2_32.bind
+wshwildcard = WSHTCPIP.WSHGetWildcardSockaddr
+EXPORTS
+WSHOpenSocket = WSHTCPIP.WSHOpenSocket
+WSHOpenSocket2 = WSHTCPIP.WSHOpenSocket2
+WSHJoinLeaf = WSHTCPIP.WSHJoinLeaf
+WSHNotify = WSHTCPIP.WSHNotify
+WSHGetSocketInformation = WSHTCPIP.WSHGetSocketInformation
+WSHSetSocketInformation = WSHTCPIP.WSHSetSocketInformation
+WSHGetSockaddrType = WSHTCPIP.WSHGetSockaddrType
+WSHGetWildcardSockaddr = WSHTCPIP.WSHGetWildcardSockaddr
+WSHGetBroadcastSockaddr = WSHTCPIP.WSHGetBroadcastSockaddr
+WSHAddressToString = WSHTCPIP.WSHAddressToString
+WSHStringToAddress = WSHTCPIP.WSHStringToAddress
+WSHIoctl = WSHTCPIP.WSHIoctl
+WSHGetWSAProtocolInfo = WSHTCPIP.WSHGetWSAProtocolInfo
+WSHGetWinsockMapping = WSHTCPIP.WSHGetWinsockMapping 
+WSHEnumProtocols = WSHTCPIP.WSHEnumProtocols
+WSHGetProviderGuid = WSHTCPIP.WSHGetProviderGuid

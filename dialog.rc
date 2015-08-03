@@ -1,0 +1,118 @@
+//Microsoft Developer Studio generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_FORMVIEW DIALOGEX 0, 0, 442, 282
+STYLE DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "bindip - bind interface to applications"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LISTBOX         IDC_EXELIST,10,15,205,215,LBS_SORT | 
+                    LBS_NOINTEGRALHEIGHT | LBS_EXTENDEDSEL | WS_VSCROLL | 
+                    WS_TABSTOP
+    LISTBOX         IDC_INTLIST,225,15,205,215,LBS_NOINTEGRALHEIGHT | 
+                    WS_VSCROLL | WS_TABSTOP
+    CTEXT           "application .exe:",IDC_STATIC,15,5,200,10
+    CTEXT           "bound to interface:",IDC_STATIC,220,5,215,10
+    PUSHBUTTON      "Add file",IDC_ADD,10,234,75,15,0,WS_EX_ACCEPTFILES
+    PUSHBUTTON      "Refresh",IDC_REFRESH,95,234,70,15
+    PUSHBUTTON      "Done",IDC_DONE,390,239,40,35
+    PUSHBUTTON      "Help",IDC_URL,176,239,89,35
+    CONTROL         "IP address:",IDC_STATIC,"Static",SS_LEFTNOWORDWRAP | 
+                    WS_GROUP,272,242,43,8,WS_EX_RIGHT
+    LTEXT           "MAC address:",IDC_STATIC,270,260,45,8,0,WS_EX_RIGHT
+    CONTROL         "0.0.0.0.0",IDC_IP,"Static",SS_LEFTNOWORDWRAP | 
+                    SS_SUNKEN | WS_GROUP,320,242,65,10
+    LTEXT           "00-00-00-00-00-00",IDC_MAC,320,260,65,10,SS_SUNKEN
+    CONTROL         "Global WinSock hook (right click otherwise)",IDC_APPINIT,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,251,165,10
+    CONTROL         "Add right-click option to shell explorer",IDC_SHELL,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,264,155,10
+END
+
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO DISCARDABLE 
+BEGIN
+    IDD_FORMVIEW, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 435
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 275
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+
