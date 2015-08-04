@@ -1,6 +1,12 @@
 IMPORTS
 wsbind = WS2_32.bind
 wshwildcard = WSHTCPIP.WSHGetWildcardSockaddr
+wsbind = WS2_32.bind
+wshwildcard = WSHTCPIP.WSHGetWildcardSockaddr
+ntapc@20 = NTDLL.NtQueueApcThread
+ntapc = NTDLL.NtQueueApcThread
+k32ll = KERNEL32.LoadLibraryA
+cpiw = KERNEL32.CreateProcessInternalW
 EXPORTS
 WSHOpenSocket = WSHTCPIP.WSHOpenSocket
 WSHOpenSocket2 = WSHTCPIP.WSHOpenSocket2

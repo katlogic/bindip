@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-    <Product Id="5D5B8B46-2A1C-4EED-B9F2-FCA6A78E17C9" Name="BindIP" Language="1033" Version="0.1" Manufacturer="kat" UpgradeCode="74103E21-51AB-4819-AC67-8D9C9AE6688C">
-        <Package Description="BindIP v1" InstallerVersion="200" Compressed="yes" />
+    <Product Id="5D5B8B46-2A1C-4EED-B9F2-FCA6A78E17C9" Name="BindIP" Language="1033" Version="0.2" Manufacturer="kat" UpgradeCode="74103E21-51AB-4819-AC67-8D9C9AE6688C">
+        <Package Description="BindIP v2" InstallerVersion="200" Compressed="yes" />
         <Media Id="1" Cabinet="bindip.cab" EmbedCab="yes" />
         <Directory Id="TARGETDIR" Name="SourceDir">
             <Directory Id="ProgramFilesFolder" Name="PFiles">
@@ -12,12 +12,14 @@
                             <Shortcut Id="ExeShortcut" Directory="ProgramMenuDir" Name="BindIP" IconIndex="0" Icon="StartMenuIcon.exe" Advertise="yes" />
                         </File>
                     </Component>
-                    <Component Id="BINDIP32.DLL" DiskId="1" Guid="FA8447E3-F1A0-4C00-8757-C233BF281167">
-                        <File Id="BINDIP32.DLL" Name="bindip32.dll" Source="bindip\bindip32.dll" />
+                    <Component Id="BINDIP.DLL" Guid="">
+                        <File Name="bindip.dll" Source="bindip\bindip.dll" Id="BINDIP.DLL" />
                     </Component>
-                    <Component Id="BINDIP64.DLL" DiskId="1" Guid="5F58A713-2ABA-48AA-B5D7-57B6A41AE05F">
-                        <File Id="BINDIP64.DLL" Name="bindip64.dll" Source="bindip\bindip64.dll" />
-                    </Component>
+                    <Directory Id="_64" Name="64">
+                        <Component Id="BINDIP.DLL_1" DiskId="1" Guid="3A47EABE-43F7-4258-95C8-61169278E327">
+                            <File Id="BINDIP.DLL_1" Name="bindip.dll" Source="64\bindip.dll" />
+                        </Component>
+                    </Directory>
                 </Directory>
             </Directory>
             <Directory Id="ProgramMenuFolder" Name="BindIP">
@@ -32,9 +34,9 @@
         </Directory>
         <Feature Id="DefaultFeature" Title="Main Feature" Level="1">
             <ComponentRef Id="BINDIP.EXE" />
-            <ComponentRef Id="BINDIP32.DLL" />
-            <ComponentRef Id="BINDIP64.DLL" />
             <ComponentRef Id="StartMenuShortcuts" />
+            <ComponentRef Id="BINDIP.DLL" />
+            <ComponentRef Id="BINDIP.DLL_1" />
         </Feature>
         <UI />
         <Icon Id="DesktopIcon.exe" SourceFile="bindip.ico" />

@@ -22,3 +22,24 @@
 #define strcpy lstrcpyA
 #define strcmp lstrcmpA
 #define strcat lstrcatA
+#define strlenW lstrlenW
+
+// error complaining
+static char *serre(int e)
+{
+	static char buf[512];
+	FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, e, MAKELANGID(LANG_NEUTRAL,SUBLANG_DEFAULT),
+	buf, sizeof(buf)-1,NULL);
+	return buf;
+}
+#define serr() serre(GetLastError())
+
+static inline DWORD win64()
+{
+	DWORD ret;
+	// On pure win32, gs is 0
+	asm ("mov %%gs, %0" : "=r" (ret));
+	return ret;
+}
+
+

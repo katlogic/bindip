@@ -3,8 +3,14 @@
 
 static HKEY registry;
 static IP_ADAPTER_INFO adapters[256];
+#if 0
 static BOOL (*wow64_disable)(void **old);
 static BOOL (*wow64_enable)(void *old);
+#endif
+
+__declspec(dllimport) BOOL wow64_disable(void **old);
+__declspec(dllimport) BOOL wow64_enable(void *old);
+
 
 // when wow64_disable|enable above does not exist
 static void dummy_call(void *d){}
@@ -21,8 +27,13 @@ static void adduniq(HWND list, char *s)
 // enumerate running processes and add to the list
 static void enumproc(HWND list)
 {
+	int i,t;
+	char subname[MAX_PATH];
+	DWORD subsize = sizeof(subname);
 	PROCESSENTRY32 lpe;
 	lpe.dwSize = sizeof(lpe);
+	for (i=0;(t=RegEnumValue(registry, i, subname, &subsize, NULL, NULL, NULL, NULL))==ERROR_SUCCESS;i++,subsize=sizeof(subname))
+		adduniq(list, subname);
 	HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 	BOOL entry = Process32First(snap, &lpe);
 	while (entry) {
@@ -160,8 +171,8 @@ static int locate_dlls(char *buf, int sys)
 				PathRemoveFileSpecA(tbuf);
 				break;
 		}
-		len32 = wnsprintf(buf, 2048, "%s\\bindip32.dll", tbuf)+1;
-		wnsprintf(buf + len32, 2048, "%s\\bindip64.dll", tbuf);
+		len32 = wnsprintf(buf, 2048, "%s\\bindip.dll", tbuf)+1;
+		wnsprintf(buf + len32, 2048, "%s\\64\\bindip.dll", tbuf);
 		if (GetFileAttributesA(buf) != INVALID_FILE_ATTRIBUTES || GetFileAttributesA(buf+len32) != INVALID_FILE_ATTRIBUTES)
 			goto out;
 	}
@@ -169,16 +180,6 @@ out:;
 	wow64_enable(sav);
 	return len32;
 }
-
-// error complaining
-static char *serre(int e)
-{
-	static char buf[512];
-	FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, e, MAKELANGID(LANG_NEUTRAL,SUBLANG_DEFAULT),
-	buf, sizeof(buf)-1,NULL);
-	return buf;
-}
-#define serr() serre(GetLastError())
 
 // configure global filter winsock
 static int dll_config(int enable, int complain)
@@ -269,6 +270,7 @@ static INT_PTR CALLBACK dialog_wproc(HWND dlg, UINT msg, WPARAM w, LPARAM l)
 	case WM_INITDIALOG:
 		enumproc(exe);
 		enumintf(intf);
+	
 		Button_SetCheck(GetDlgItem(dlg, IDC_SHELL), shell_config(-1));
 		Button_SetCheck(GetDlgItem(dlg, IDC_APPINIT), dll_config(-1,0));
 		SetFocus(exe);
@@ -327,6 +329,7 @@ static INT_PTR CALLBACK dialog_wproc(HWND dlg, UINT msg, WPARAM w, LPARAM l)
 }
 
 
+#if 0
 // Check if system is AMD64 kernel
 static inline DWORD win64()
 {
@@ -397,7 +400,7 @@ static void run_preloaded(WCHAR *cmd)
 	int tlen = strlen(dlls+len32)+1;
 	DWORD wrote;
 	if (!len32) {
-		MessageBoxA(NULL, "Unable to locate bindip32/64.dll", "Path not found", MB_ICONERROR|MB_OK);
+		MessageBoxA(NULL, "Unable to locate bindip.dll", "Path not found", MB_ICONERROR|MB_OK);
 		ExitProcess(1);
 	}
 	si.cb = sizeof(si);
@@ -442,6 +445,55 @@ err:;
 	CloseHandle(pi.hProcess);
 	ExitProcess(ecode);
 }
+#endif
+__declspec(dllimport) char *inject(HANDLE hp, HANDLE ht, char *dll32, int len32);
+__declspec(dllimport) void cpiw_init();
+static void run_preloaded(WCHAR *cmd)
+{
+	DWORD ecode = 0;
+	char dlls[MAX_PATH*2];
+	STARTUPINFOW si = {0};
+	PROCESS_INFORMATION pi = {0};
+	int len32 = locate_dlls(dlls, 0);
+
+	if (len32) {
+		// Triggers our patched CreateProcessInternal
+		dlls[len32-1] = ';';
+		SetEnvironmentVariable("BINDIP_CHAINHOOK", dlls);
+		cpiw_init(); // Patch createprocess
+	}
+
+	si.cb = sizeof(si);
+	// Pass console handles
+	si.dwFlags = STARTF_USESTDHANDLES;
+	si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+	si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+	si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+
+	// Spawn
+	if (!CreateProcessW(NULL, cmd, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+		MessageBoxA(NULL, serr(), "CreateProcess", MB_ICONERROR|MB_OK);
+		goto err;
+	}
+
+#if 0
+	// Inject
+	reason = inject(pi.hProcess, pi.hThread, dlls, len32);
+#endif
+	if (WaitForInputIdle(pi.hProcess, INFINITE) == WAIT_FAILED) {
+		// Console process, setup break handler
+		WaitForSingleObject(pi.hProcess, INFINITE);
+		GetExitCodeProcess(pi.hProcess, &ecode);
+	} else {
+		// GUI app, close console
+		FreeConsole();
+	}
+err:;
+	CloseHandle(pi.hThread);
+	CloseHandle(pi.hProcess);
+	ExitProcess(ecode);
+}
+
 
 void winMain()
 {
@@ -455,6 +507,7 @@ void winMain()
 		cmd++;
 
 	// Do this at runtime, as old windows dont have these
+#if 0
 	HMODULE k = GetModuleHandle("KERNEL32");
 	if ((wow64_disable = (void*)GetProcAddress(k,"Wow64DisableWow64FsRedirection"))) {
 		wow64_enable = (void*)GetProcAddress(k,"Wow64RevertWow64FsRedirection");
@@ -462,8 +515,11 @@ void winMain()
 		wow64_disable = (void*)dummy_call;
 		wow64_enable = (void*)dummy_call;
 	}
+#endif
 
 	// Request to launch specified program
+	//static WCHAR fake[MAX_PATH] = L"nc.exe -h";
+	//cmd = fake;
 	if (*cmd) {
 		run_preloaded(cmd);
 	} else {
