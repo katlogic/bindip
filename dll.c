@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 static HKEY registry, ifreg; // Config registry, system interface registry
+static char myname[MAX_PATH]; // My exe name, without path
 static struct helper { // Linked list of helper pages
 	struct helper *next;
 	BYTE *bytes; // pointer to current b
@@ -157,6 +158,33 @@ found:;
 	return 1;
 }
 
+// Try to get current ip for given exe name
+long get_name_config(char *name)
+{
+	HKEY reg2;
+	char ipbuf[64];
+	char ifname[512];
+	DWORD len = sizeof(ifname);
+	DWORD ilen = sizeof(ipbuf);
+	if (RegQueryValueEx(registry, name, NULL, NULL, (LPBYTE)ifname, &len))
+		return 0;
+	ipbuf[0] = 0;
+	// Maintain the env so that children processes can look it up
+	SetEnvironmentVariable("BINDIP_IF", ifname);
+	// Look up ip address of interface then
+	RegOpenKeyExA(ifreg, ifname, 0, KEY_READ, &reg2);
+	if (RegQueryValueExA(reg2, "DhcpIPAddress", NULL, NULL, (LPBYTE)ipbuf, &ilen)!=ERROR_SUCCESS) {
+		ilen = sizeof(ipbuf);
+		// Maybe it's static config
+		RegQueryValueExA(reg2, "IPAddress", NULL, NULL, (LPBYTE)ipbuf, &ilen);
+	}
+	RegCloseKey(reg2);
+	// We have some result
+	if (ipbuf[0])
+		return inet_addr(ipbuf);
+	return 0;
+}
+
 // Return configured ip (cached for frequent access)
 static unsigned long cached_ip(unsigned long orig)
 {
@@ -170,33 +198,10 @@ static unsigned long cached_ip(unsigned long orig)
 
 	// Ping registry every 2 seconds
 	if (last_cache < now) {
-		char myname[MAX_PATH];
-		char ifname[512];
-		DWORD len = sizeof(ifname);
+		char myname2[MAX_PATH];
 		last_cache = now + 2000;
-		GetModuleFileName(NULL, myname, sizeof(myname));
-		PathStripPathA(myname);
-		// Is it configured?
-		if (RegQueryValueEx(registry, myname, NULL, NULL, (LPBYTE)ifname, &len)==ERROR_SUCCESS
-			|| GetEnvironmentVariable("BINDIP_IF", ifname, sizeof(ifname))) {
-			HKEY reg2;
-			char ipbuf[64];
-			DWORD ilen = sizeof(ipbuf);
-			ipbuf[0] = 0;
-			// Maintain the env so that children processes can look it up
-			SetEnvironmentVariable("BINDIP_IF", ifname);
-			// Look up ip address of interface then
-			RegOpenKeyExA(ifreg, ifname, 0, KEY_READ, &reg2);
-			if (RegQueryValueExA(reg2, "DhcpIPAddress", NULL, NULL, (LPBYTE)ipbuf, &ilen)!=ERROR_SUCCESS) {
-				ilen = sizeof(ipbuf);
-				// Maybe it's static config
-				RegQueryValueExA(reg2, "IPAddress", NULL, NULL, (LPBYTE)ipbuf, &ilen);
-			}
-			RegCloseKey(reg2);
-			// We have some result
-			if (ipbuf[0])
-				cip = inet_addr(ipbuf);
-		} else cip = 0;
+		if ((!(cip=get_name_config(myname))) && GetEnvironmentVariable("BINDIP_EXE", myname2, sizeof(myname)))
+			cip=get_name_config(myname2);
 	}
 	return cip?cip:orig;
 }
@@ -250,11 +255,9 @@ __declspec(dllexport) BOOL __cdecl apc(HWND hwnd, HINSTANCE hinst, LPSTR cmd, in
 static
 void inject(HANDLE hp, HANDLE ht, char *dll32, int len32)
 {
-	DWORD errsave;
 	SIZE_T wrote;
 	BOOL x86, emu = 0;
 	void *pmem;
-	char *reason;
 	pmem = VirtualAllocEx(hp, NULL, 4096, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 	if (!pmem) return;
 	if (!WriteProcessMemory(hp, pmem, dll32, len32 + strlen(dll32+len32), &wrote))
@@ -265,7 +268,6 @@ void inject(HANDLE hp, HANDLE ht, char *dll32, int len32)
 		wow64(hp, &emu);
 	x86 = (!win64())||emu;
 	// We're 64bit, but the target process is 32bit, or vice-versa
-	reason = "QueueUserAPC";
 	if (((B64 && x86) || ((!B64) && (!x86)))) {
 		HANDLE hv = NULL;
 		void *old = NULL;
@@ -290,7 +292,6 @@ void inject(HANDLE hp, HANDLE ht, char *dll32, int len32)
 	} else { // It's the same, queue apc directly
 		inject_apc(ht, pmem+(x86?0:len32));
 	}
-err:;
 }
 
 // hijack CreateProcessInternalW
@@ -340,7 +341,6 @@ BOOL __stdcall DllMain(HINSTANCE hinst, DWORD why, LPVOID v)
 {
 	switch (why) {
 	case DLL_PROCESS_ATTACH: {
-		char dummy[512];
 #ifndef __amd64__
 		HMODULE k = GetModuleHandle("KERNEL32");
 		wow64 = GetProcAddress(k, "IsWow64Process");
@@ -351,8 +351,17 @@ BOOL __stdcall DllMain(HINSTANCE hinst, DWORD why, LPVOID v)
 		if (!helpers) return TRUE;
 		helpers->bytes = helpers->b;
 #endif
-		if (GetEnvironmentVariableA("BINDIP_CHAINHOOK", NULL, 0))
+		// Do this once
+		GetModuleFileName(NULL, myname, sizeof(myname));
+		PathStripPathA(myname);
+
+		if (GetEnvironmentVariableA("BINDIP_CHAINHOOK", NULL, 0)) {
 			cpiw_init();
+			// No name defined yet, use currently running
+			if (!GetEnvironmentVariableA("BINDIP_EXE", NULL, 0))
+				SetEnvironmentVariableA("BINDIP_EXE", myname);
+		}
+
 		// Only bother if we can access the registry
 		if ((!RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\BindIP\\Mapping", 0, KEY_READ, &registry)) &&
 			!RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\services\\Tcpip\\Parameters\\Interfaces", 0, KEY_READ, &ifreg))

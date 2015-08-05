@@ -11,10 +11,6 @@ static BOOL (*wow64_enable)(void *old);
 __declspec(dllimport) BOOL wow64_disable(void **old);
 __declspec(dllimport) BOOL wow64_enable(void *old);
 
-
-// when wow64_disable|enable above does not exist
-static void dummy_call(void *d){}
-
 // add unique list item
 static void adduniq(HWND list, char *s)
 {
@@ -328,124 +324,6 @@ static INT_PTR CALLBACK dialog_wproc(HWND dlg, UINT msg, WPARAM w, LPARAM l)
 	return FALSE;
 }
 
-
-#if 0
-// Check if system is AMD64 kernel
-static inline DWORD win64()
-{
-	DWORD ret;
-	// On pure win32, gs is 0
-	asm ("mov %%gs, %0" : "=r" (ret));
-	return ret;
-}
-
-// Queue APC into a 64bit process from a 32bit WoW64 process
-// returns true on success
-static BOOL QueueUserAPC64(void *call, HANDLE thr, DWORD arg)
-{
-	HMODULE ntdll = LoadLibraryA("NTDLL.DLL");
-	void *apc = GetProcAddress(ntdll, "NtQueueApcThread");
-	if (!apc) return FALSE;
-	BYTE *p = apc;
-	if (p[0] != 0xb8) return FALSE;
-	DWORD retv = *((DWORD*)(p+1)); // fetch syscall number from WoW wrapper
-	asm (
-		"mov	%%esp, %%edi\n"
-		"sub	$0x28, %%esp\n"
-		"and	$-0x10, %%esp\n"
-		".byte 0xea;.long 1f;.short 0x33\n" // jmp 0x1f,0x33
-		"2:	.byte 0x48; lret\n"
-		"1:\n"
-		"mov	%%ecx, %%ecx\n"
-		"mov	%%edx,%%edx\n"
-		".byte	0x41; mov %%esi, %%eax\n" // mov %esi, %r8d
-		".byte	0x49; mov %%ecx, %%edx\n" // mov %rcx, %r10
-		".byte	0x4d; xor %%ecx, %%ecx\n" // xor %r9, %r9
-		".byte	0x67,0x4c; mov %%ecx, 0x20(%%esp)\n" // movq %r9, 0x20(%esp)
-		"syscall\n"
-		"push	$0x23\n"
-		"call	2b\n"
-		"mov	%%edi, %%esp"
-		: "=a" (retv)
-		: "a" (retv), "c" ((DWORD)thr), "d" ((DWORD)call), "S"((DWORD)arg)
-	);
-	return retv == 0;
-}
-
-// Run a process with preloaded dlls
-static void run_preloaded(WCHAR *cmd)
-{
-	// Locates LoadLibraryEx and runs it with passed APC argument
-	static char const shellcode[] = {
-		0x51,0x56,0x53,0x6a,0x60,0x59,0x65,0x48,0x8b,0x1,0x48,0x8b,0x40,0x18,0x48,0x8b,
-		0x70,0x30,0x48,0xad,0x48,0x8b,0x58,0x10,0x8b,0x43,0x3c,0x48,0x8d,0x74,0x3,0x78,
-		0x8b,0x46,0x10,0x48,0x8d,0x74,0x3,0x1c,0xad,0x4c,0x8d,0xc,0x18,0xad,0x4c,0x8d,
-		0x14,0x18,0xad,0x4c,0x8d,0x1c,0x18,0x4d,0x31,0xe4,0x43,0x8b,0x34,0xa2,0x48,0x1,
-		0xde,0x49,0xff,0xc4,0x81,0x3e,0x4c,0x6f,0x61,0x64,0x75,0xee,0x81,0x7e,0x4,0x4c,
-		0x69,0x62,0x72,0x75,0xe5,0x81,0x7e,0x8,0x61,0x72,0x79,0x45,0x75,0xdc,0x66,0x81,
-		0x7e,0xc,0x78,0x41,0x75,0xd4,0x43,0xf,0xb7,0x54,0x63,0xfe,0x41,0x8b,0x4,0x91,
-		0x48,0x1,0xd8,0x5b,0x5e,0x59,0x48,0x31,0xd2,0x4d,0x31,0xc0,0xff,0xe0,0
-	};
-	char zygote[4096];
-	DWORD ecode = 0;
-	STARTUPINFOW si = {0};
-	PROCESS_INFORMATION pi = {0};
-	HMODULE k32 = LoadLibraryA("KERNEL32.DLL");
-	char *reason = NULL;
-	void *ll = GetProcAddress(k32, "LoadLibraryA");
-	strcpy(zygote, shellcode);
-	int zlen = strlen(zygote);
-	char *dlls = zygote + zlen;
-	int len32 = locate_dlls(dlls, 1);
-	int tlen = strlen(dlls+len32)+1;
-	DWORD wrote;
-	if (!len32) {
-		MessageBoxA(NULL, "Unable to locate bindip.dll", "Path not found", MB_ICONERROR|MB_OK);
-		ExitProcess(1);
-	}
-	si.cb = sizeof(si);
-	// Pass console handles
-	si.dwFlags = STARTF_USESTDHANDLES;
-	si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
-	si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
-	si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
-	reason = "CreateProcessW";
-	if (!CreateProcessW(NULL, cmd, NULL, NULL, TRUE, CREATE_SUSPENDED, NULL, NULL, &si, &pi))
-		goto err;
-	// Now try to inject the suspended proces
-	reason = "VirtualAllocEx";
-	void *pmem = VirtualAllocEx(pi.hProcess, NULL, 4096, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-	if (!pmem)
-		goto err;
-	reason = "WriteProcessMemory";
-	if (!WriteProcessMemory(pi.hProcess, pmem, zygote, zlen + tlen, &wrote))
-		goto err;
-	reason = "QueueUserAPC";
-	if (!QueueUserAPC(ll, pi.hThread, ((INT_PTR)pmem) + zlen))
-		if (!win64() || !QueueUserAPC64(pmem, pi.hThread, ((INT_PTR)pmem) + zlen + len32))
-			goto err;
-	// Seems ok
-	reason = NULL;
-	ResumeThread(pi.hThread);
-	if (WaitForInputIdle(pi.hProcess, INFINITE) == WAIT_FAILED) {
-		// Console process, setup break handler
-		WaitForSingleObject(pi.hProcess, INFINITE);
-		GetExitCodeProcess(pi.hProcess, &ecode);
-	} else {
-		// GUI app, close console
-		FreeConsole();
-	}
-err:;
-	if (reason) {
-		ecode = 1;
-		MessageBoxA(NULL, serr(), reason, MB_ICONERROR|MB_OK);
-		TerminateProcess(pi.hProcess, 0);
-	}
-	CloseHandle(pi.hThread);
-	CloseHandle(pi.hProcess);
-	ExitProcess(ecode);
-}
-#endif
 __declspec(dllimport) char *inject(HANDLE hp, HANDLE ht, char *dll32, int len32);
 __declspec(dllimport) void cpiw_init();
 static void run_preloaded(WCHAR *cmd)
@@ -476,10 +354,6 @@ static void run_preloaded(WCHAR *cmd)
 		goto err;
 	}
 
-#if 0
-	// Inject
-	reason = inject(pi.hProcess, pi.hThread, dlls, len32);
-#endif
 	if (WaitForInputIdle(pi.hProcess, INFINITE) == WAIT_FAILED) {
 		// Console process, setup break handler
 		WaitForSingleObject(pi.hProcess, INFINITE);
@@ -505,17 +379,6 @@ void winMain()
 			quot ^= 1;
 	while (*cmd && *cmd<= L' ')
 		cmd++;
-
-	// Do this at runtime, as old windows dont have these
-#if 0
-	HMODULE k = GetModuleHandle("KERNEL32");
-	if ((wow64_disable = (void*)GetProcAddress(k,"Wow64DisableWow64FsRedirection"))) {
-		wow64_enable = (void*)GetProcAddress(k,"Wow64RevertWow64FsRedirection");
-	} else {
-		wow64_disable = (void*)dummy_call;
-		wow64_enable = (void*)dummy_call;
-	}
-#endif
 
 	// Request to launch specified program
 	//static WCHAR fake[MAX_PATH] = L"nc.exe -h";
