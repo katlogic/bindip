@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-    <Product Id="5D5B8B46-2A1C-4EED-B9F2-FCA6A78E17C9" Name="BindIP" Language="1033" Version="0.2" Manufacturer="kat" UpgradeCode="74103E21-51AB-4819-AC67-8D9C9AE6688C">
+    <Product Id="5D5B8B46-2A1C-4EED-B9F2-FCA6A78E17C9" Name="BindIP" Language="1033" Version="0.3" Manufacturer="kat" UpgradeCode="74103E21-51AB-4819-AC67-8D9C9AE6688C">
         <Package Description="BindIP v2" InstallerVersion="200" Compressed="yes" />
         <Media Id="1" Cabinet="bindip.cab" EmbedCab="yes" />
         <Directory Id="TARGETDIR" Name="SourceDir">
