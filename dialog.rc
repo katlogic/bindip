@@ -21,16 +21,13 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 #pragma code_page(1252)
 #endif //_WIN32
 
-5000 ICON "bindip.ico"
-
 /////////////////////////////////////////////////////////////////////////////
 //
 // Dialog
 //
 
 IDD_FORMVIEW DIALOGEX 0, 0, 442, 282
-STYLE DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
-    WS_SYSMENU
+STYLE DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
 CAPTION "bindip - bind interface to applications"
 FONT 8, "MS Sans Serif"
 BEGIN
@@ -51,8 +48,9 @@ BEGIN
     CONTROL         "0.0.0.0.0",IDC_IP,"Static",SS_LEFTNOWORDWRAP | 
                     SS_SUNKEN | WS_GROUP,320,242,65,10
     LTEXT           "00-00-00-00-00-00",IDC_MAC,320,260,65,10,SS_SUNKEN
-    CONTROL         "Global WinSock hook (right click otherwise)",IDC_APPINIT,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,251,165,10
+    CONTROL         "Global WinSock hook (right click otherwise)",
+                    IDC_APPINIT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,251,
+                    165,10
     CONTROL         "Add right-click option to shell explorer",IDC_SHELL,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,264,155,10
 END
@@ -102,6 +100,15 @@ BEGIN
 END
 #endif    // APSTUDIO_INVOKED
 
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_ICON1               ICON    DISCARDABLE     "bindip.ico"
 #endif    // English (U.S.) resources
 /////////////////////////////////////////////////////////////////////////////
 

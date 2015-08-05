@@ -156,13 +156,13 @@ static int locate_dlls(char *buf, int sys)
 	}
 	for (i = 0; i < 3; i++) {
 		switch(i) {
-			case 0:
+			case 2:
 				ExpandEnvironmentStringsA("%PROGRAMFILES(X86)%\\BindIP", tbuf, sizeof(tbuf));
 				break;
 			case 1:
 				ExpandEnvironmentStringsA("%PROGRAMFILES%\\BindIP", tbuf, sizeof(tbuf));
 				break;
-			case 2:
+			case 0:
 				GetModuleFileNameA(NULL, tbuf, sizeof(tbuf));
 				PathRemoveFileSpecA(tbuf);
 				break;
@@ -178,7 +178,7 @@ out:;
 }
 
 // configure global filter winsock
-static int dll_config(int enable, int complain)
+static int dll_config(HWND dlg, int enable)
 {
 	HKEY reg;
 	char buf[MAX_PATH*2], buf2[MAX_PATH*2];
@@ -187,8 +187,9 @@ static int dll_config(int enable, int complain)
 	int e;
 	void *sav=NULL;
 	if ((e=RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\services\\Tcpip\\Parameters\\Winsock", 0, KEY_ALL_ACCESS, &reg))) {
-		if (complain)
-			MessageBoxA(NULL, "Can't open registry for writing, run BindIP as admin (right click, 'Run as administrator')", serre(e), MB_ICONERROR|MB_OK);
+		if (dlg) {
+			Button_Enable(dlg, 0);
+		}
 		return 0;
 	}
 	wow64_disable(&sav);
@@ -261,14 +262,15 @@ static INT_PTR CALLBACK dialog_wproc(HWND dlg, UINT msg, WPARAM w, LPARAM l)
 {
 	HWND exe = GetDlgItem(dlg, IDC_EXELIST);
 	HWND intf = GetDlgItem(dlg, IDC_INTLIST);
+	HWND appinit = GetDlgItem(dlg, IDC_APPINIT);
+	HWND shell = GetDlgItem(dlg, IDC_SHELL);
 	int il = 0;
 	switch (msg) {
 	case WM_INITDIALOG:
 		enumproc(exe);
 		enumintf(intf);
-	
-		Button_SetCheck(GetDlgItem(dlg, IDC_SHELL), shell_config(-1));
-		Button_SetCheck(GetDlgItem(dlg, IDC_APPINIT), dll_config(-1,0));
+		Button_SetCheck(shell, shell_config(-1));
+		Button_SetCheck(appinit, dll_config(appinit,-1));
 		SetFocus(exe);
 		SendMessage(exe, LB_SETSEL, TRUE, 0);
 		process_selections(dlg,exe,intf, 0);
@@ -310,13 +312,13 @@ static INT_PTR CALLBACK dialog_wproc(HWND dlg, UINT msg, WPARAM w, LPARAM l)
 		return TRUE;
 	}
 	case IDC_SHELL:
-		Button_SetCheck(GetDlgItem(dlg, IDC_SHELL), shell_config(Button_GetCheck(GetDlgItem(dlg, IDC_SHELL))));
+		Button_SetCheck(shell, shell_config(Button_GetCheck(shell)));
 		return TRUE;
 	case IDC_URL:
 		ShellExecute(NULL, "open", "http://lua.cz/bindip/1", NULL, NULL, SW_SHOWNORMAL);
 		return TRUE;
 	case IDC_APPINIT:
-		Button_SetCheck(GetDlgItem(dlg, IDC_APPINIT), dll_config(Button_GetCheck(GetDlgItem(dlg, IDC_APPINIT)),1));
+		Button_SetCheck(appinit, dll_config(appinit, Button_GetCheck(appinit)));
 		return TRUE;
 
 	} // WM_COMMAND
@@ -394,7 +396,7 @@ void winMain()
 		if (disp == REG_CREATED_NEW_KEY) {
 			// Run for the first time - enable shell, delete system dlls if possible
 			shell_config(1);
-			dll_config(0, 0);
+			dll_config(NULL, 0);
 		} else if (shell_config(-1)) // Shell enabled, re-enable again to update exe path in registry
 			shell_config(1);
 		GetAdaptersInfo(adapters, &len);

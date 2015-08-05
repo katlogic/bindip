@@ -1,5 +1,6 @@
 IMPORTS
 wsbind = WS2_32.bind
+wsconnect = WS2_32.connect
 wshwildcard = WSHTCPIP.WSHGetWildcardSockaddr
 wsbind = WS2_32.bind
 wshwildcard = WSHTCPIP.WSHGetWildcardSockaddr

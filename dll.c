@@ -12,6 +12,7 @@ static struct helper { // Linked list of helper pages
 // Hooked APIs
 static int (__stdcall *orig_wsh)(void *d, struct sockaddr_in *a, int *l);
 static int (__stdcall *orig_bind)(SOCKET,const struct sockaddr_in *,int);
+static int (__stdcall *orig_connect)(SOCKET,const struct sockaddr_in *,int);
 static DWORD __stdcall (*orig_cpiw)(DWORD, WCHAR*, WCHAR*, void *, void *, BOOL, DWORD,
 void *, WCHAR *, STARTUPINFOW *, PROCESS_INFORMATION *, DWORD);
 
@@ -43,6 +44,7 @@ BOOL wow64_disable(void **a)
 // aliased imports under different name to avoid header conflicts, see dll.def
 __declspec(dllimport) void wshwildcard();
 __declspec(dllimport) void wsbind();
+__declspec(dllimport) void wsconnect();
 __declspec(dllimport) void k32ll();
 __declspec(dllimport) DWORD __stdcall ntapc(HANDLE,void*,void*,long,long);
 
@@ -59,8 +61,9 @@ static int detour(void *p, void *dst, void **orig)
 	// First byte is sequence length, 0 is wildcard
 	static BYTE prologues[][6] = {
 		{ 5, 0x4c, 0x8b, 0xdc, 0x53, 0x56 }, // mov r11, rsp; push rbx; push rsi
+		{ 5, 0xff, 0xf3, 0x56, 0x41, 0x54 }, // push rbx; purh rsi; push r12
 		{ 5, 0xb8 },      // mov eax, N
-		{ 5, 0x48, 0x89 }, // mov [rsp+], rsp
+		{ 5, 0x48, 0x89 }, // mov [rsp+N], rbx
 		{ 2, 0x6a },	  // push 8bit
 		{ 5, 0x68 },	  // push 32bit
 #ifndef __amd64__
@@ -223,6 +226,19 @@ static int __stdcall my_bind(SOCKET sk, const struct sockaddr_in *a,int l)
 	return orig_bind(sk,fill_sin(&copy, a),l);
 }
 
+// connect() hook
+static int __stdcall my_connect(SOCKET sk, const struct sockaddr_in *a,int l)
+{
+	// Connecting to localhost? In that case bind it first.
+	if ((a->sin_family == AF_INET) && ((a->sin_addr.s_addr&0xff)==0x7f)) {
+		struct sockaddr_in copy = *a;
+		copy.sin_port = 0;
+		orig_bind(sk, &copy, l);
+	}
+	return orig_connect(sk,a,l);
+}
+
+
 // this covers everything not actually using bind
 static int __stdcall my_wsh(void *d, struct sockaddr_in *a, int *l)
 {
@@ -364,11 +380,17 @@ BOOL __stdcall DllMain(HINSTANCE hinst, DWORD why, LPVOID v)
 
 		// Only bother if we can access the registry
 		if ((!RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\BindIP\\Mapping", 0, KEY_READ, &registry)) &&
-			!RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\services\\Tcpip\\Parameters\\Interfaces", 0, KEY_READ, &ifreg))
+			!RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\services\\Tcpip\\Parameters\\Interfaces", 0, KEY_READ, &ifreg)) {
+			int a =
 			detour(wshwildcard, &my_wsh, (void**)&orig_wsh);
+			// These two are weak bindings, mainly to deal with 127.0.0.1
+			int b =
 			detour(wsbind, &my_bind, (void**)&orig_bind);
+			int c =
+			detour(wsconnect, &my_connect, (void**)&orig_connect);
 		}
 		break;
+	}
 	case DLL_PROCESS_DETACH:
 		if (registry) RegCloseKey(registry);
 		if (ifreg) RegCloseKey(ifreg);
