@@ -26,7 +26,9 @@ You can also set two global options:
 *Global Winsock hook* - with this checkbox, all network applications will be
 affected with settings you configure automatically. It is off by default and
 you need admin privileges to enable this setting, otherwise the second option
-can be used:
+can be used. Note that for applications which run with elevated privileges
+(such as VirtualBox) you generally want to use this as per-application
+injection often does not work in that case.
 
 *Add right-click option to shell explorer* - with this enabled, you'll see
 this when right clicking an application icon shortcut/executable:
@@ -109,3 +111,14 @@ routes (0.0.0.0/1 and 128.0.0.0/1 destinations) as means to override all
 other default routes regardless of metric. This is harmful kludge or
 misconfiguration, and should be fixed on the part of the VPN provider, as
 users can no longer configure their preferred default route.
+
+# Code signing
+Some applications (VirtualBox does this) and antivirus software
+and domain policies permit only signed DLL to be loaded. To make
+this work, download ceriticate from
+https://github.com/katlogic/bindip/raw/master/katCA.cer and run:
+```
+> certutil.exe -addstore Root katCA.cer
+```
+Which will make the distributed DLLs trusted. MSI installer does
+this automatically for you.
