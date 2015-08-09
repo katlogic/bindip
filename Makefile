@@ -4,17 +4,21 @@
 WIN32PATH=/c/Windows/SysWOW64
 WIN64PATH=/c/Windows/system32
 
+.PHONY: bindip
+
 all: bindip.exe bindip.dll 64/bindip.dll
 release: zip msi
 bindip: bindip.exe bindip.dll 64/bindip.dll
-	mkdir -p bindip
+sign: bindip
 	strip *.exe *.dll 64/*.dll
-	cp -vaf bindip.exe bindip.dll 64 bindip
+	cmd /c "signtool sign /v /f kat.pfx /t http://timestamp.verisign.com/scripts/timstamp.dll bindip.dll"
+	cmd /c "signtool sign /v /f kat.pfx /t http://timestamp.verisign.com/scripts/timstamp.dll 64/bindip.dll"
+	cmd /c "signtool sign /v /f kat.pfx /t http://timestamp.verisign.com/scripts/timstamp.dll bindip.exe"
 zip: bindip
-	zip -r bindip.zip bindip
+	zip -r bindip.zip bindip.exe bindip.dll 64/bindip.dll
 msi: bindip
-	candle bindip.wxs -out bindip.wixobj
-	light bindip.wixobj -out bindip.msi
+	candle bindip.wxs -out bindip.wixobj -ext WixIisExtension 
+	light bindip.wixobj -out bindip.msi -ext WixIisExtension
 
 CFLAGS=-Wall -Wno-unused -fno-stack-check -fno-stack-protector -mno-stack-arg-probe -fno-asynchronous-unwind-tables
 LDFLAGS=-Wl,--enable-stdcall-fixup -lws2_32 -lADVAPI32 -lkernel32 -lUSER32 -lComdlg32 -lIPHLPAPI -lshlwapi -lSHELL32 -lWSHTCPIP -Wl,--allow-multiple-definition -lmsvcrt

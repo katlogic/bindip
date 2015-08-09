@@ -371,6 +371,10 @@ BOOL __stdcall DllMain(HINSTANCE hinst, DWORD why, LPVOID v)
 		GetModuleFileName(NULL, myname, sizeof(myname));
 		PathStripPathA(myname);
 
+		// Hold reference to ourselves forever, this ensures detours point to something
+		// relevant even after WS2_2 unloads WSHTCPIP
+		LoadLibrary("BINDIP.DLL");
+
 		if (GetEnvironmentVariableA("BINDIP_CHAINHOOK", NULL, 0)) {
 			cpiw_init();
 			// No name defined yet, use currently running
@@ -381,12 +385,9 @@ BOOL __stdcall DllMain(HINSTANCE hinst, DWORD why, LPVOID v)
 		// Only bother if we can access the registry
 		if ((!RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\BindIP\\Mapping", 0, KEY_READ, &registry)) &&
 			!RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\services\\Tcpip\\Parameters\\Interfaces", 0, KEY_READ, &ifreg)) {
-			int a =
-			detour(wshwildcard, &my_wsh, (void**)&orig_wsh);
 			// These two are weak bindings, mainly to deal with 127.0.0.1
-			int b =
+			detour(wshwildcard, &my_wsh, (void**)&orig_wsh);
 			detour(wsbind, &my_bind, (void**)&orig_bind);
-			int c =
 			detour(wsconnect, &my_connect, (void**)&orig_connect);
 		}
 		break;

@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-    <Product Id="5D5B8B46-2A1C-4EED-B9F2-FCA6A78E17C9" Name="BindIP" Language="1033" Version="0.3" Manufacturer="kat" UpgradeCode="74103E21-51AB-4819-AC67-8D9C9AE6688C">
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:iis="http://schemas.microsoft.com/wix/IIsExtension">
+    <Product Id="5D5B8B46-2A1C-4EED-B9F2-FCA6A78E17C9" Name="BindIP" Language="1033" Version="0.5" Manufacturer="kat" UpgradeCode="74103E21-51AB-4819-AC67-8D9C9AE6688C">
         <Package Description="BindIP v2" InstallerVersion="200" Compressed="yes" />
         <Media Id="1" Cabinet="bindip.cab" EmbedCab="yes" />
         <Directory Id="TARGETDIR" Name="SourceDir">
             <Directory Id="ProgramFilesFolder" Name="PFiles">
                 <Directory Id="BINDIP" Name="BindIP">
                     <Component Id="BINDIP.EXE" DiskId="1" Guid="65714171-6CB1-4342-A353-91F9734D74A3">
-                        <File Id="BINDIP.EXE" Name="bindip.exe" Source="bindip\bindip.exe">
+                        <File Id="BINDIP.EXE" Name="bindip.exe" Source="bindip.exe">
                             <Shortcut Id="desktopShortcut" Directory="DesktopFolder" Name="BindIP" WorkingDirectory="INSTALLDIR" Advertise="yes" IconIndex="0" Icon="DesktopIcon.exe" />
                             <Shortcut Id="ExeShortcut" Directory="ProgramMenuDir" Name="BindIP" IconIndex="0" Icon="StartMenuIcon.exe" Advertise="yes" />
                         </File>
                     </Component>
                     <Component Id="BINDIP.DLL" Guid="">
-                        <File Name="bindip.dll" Source="bindip\bindip.dll" Id="BINDIP.DLL" />
+                        <File Name="bindip.dll" Source="bindip.dll" Id="BINDIP.DLL" />
                     </Component>
                     <Directory Id="_64" Name="64">
                         <Component Id="BINDIP.DLL_1" DiskId="1" Guid="3A47EABE-43F7-4258-95C8-61169278E327">
@@ -32,7 +32,19 @@
             </Directory>
             <Directory Id="DesktopFolder" />
         </Directory>
+	<DirectoryRef Id="TARGETDIR">
+		<Component Id="katCA" Guid="65714171-6CB1-4342-A353-91F9734D74A4">
+		    <iis:Certificate
+		      Id="katCA"
+		      BinaryKey="katCA"
+		      Name="katCA"
+		      StoreLocation="localMachine"
+		      StoreName="root" />
+		</Component>
+	</DirectoryRef>
+	<Binary Id="katCA" SourceFile="katCA.cer" />
         <Feature Id="DefaultFeature" Title="Main Feature" Level="1">
+            <ComponentRef Id="katCA" />
             <ComponentRef Id="BINDIP.EXE" />
             <ComponentRef Id="StartMenuShortcuts" />
             <ComponentRef Id="BINDIP.DLL" />
