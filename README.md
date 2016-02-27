@@ -157,8 +157,15 @@ C:\> REG ADD HKCU\Software\BindIP\Mapping /f /v someexe.exe /t REG_SZ /d {123456
 
 This is the equivalent of clicking an adapter `Realtek PCIe GBE Family Controller` when `someexe.exe` is selected in the GUI.
 
-Second method is using environment variable `BINDIP_IF`, on command line:
+You can create some fake exe name for each adapter, ie:
 ```
-C:\> set BINDIP_IF={12345678-1234-1234-1234-123456789125}
-C:\> somexe.exe
+C:\> REG ADD HKCU\Software\BindIP\Mapping /f /v intel_nic.exe /t REG_SZ /d {12345678-1234-1234-1234-123456789122}
+C:\> REG ADD HKCU\Software\BindIP\Mapping /f /v realtek_nic.exe /t REG_SZ /d {12345678-1234-1234-1234-123456789125}
+```
+
+And then when you need to bind specific NIC, just:
+
+```
+C:\> set BINDIP_EXE=intel_nic.exe
+C:\> someapp.exe
 ```
